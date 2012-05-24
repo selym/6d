@@ -1,0 +1,17 @@
+/* $Id: permalink.css,v 1.2 2009/03/18 01:54:50 toddnienkerk Exp $ */
+
+/* Permalink Module styles */
+
+.copybox {
+  margin: 5px 0;
+  }
+
+  .copybox-header, .copybox-footer {
+    font-size: .75em;
+    }
+  
+  .copybox-link {
+    background-color: #fff;
+    border: 1px #999 solid;
+    padding: 3px;
+    }

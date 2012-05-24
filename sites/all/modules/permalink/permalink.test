@@ -1,0 +1,113 @@
+<?php
+// $Id: permalink.test,v 1.1.2.2 2009/09/25 20:51:24 toddnienkerk Exp $
+
+class PermalinkTestCase extends DrupalWebTestCase {
+  /**
+   * Implementation of getInfo().
+   */
+  public static function getInfo() {
+    return array(
+      'name' => t('Permalink general tests'),
+      'description' => t('Test the various permalink settings.'),
+      'group' => t('Permalink'),
+    );
+  }
+
+  /**
+   * Implementation of setUp().
+   */
+  function setUp() {
+    parent::setUp('permalink');
+    // Do some default settings?.
+    // variable_set('some_variable', 'some value');
+
+    // Get the right comments per page and ordering setting.
+    variable_set('comment_default_per_page_story', 20);
+    variable_set('comment_default_mode_story', COMMENT_MODE_THREADED_EXPANDED); // Threaded, expanded.
+    variable_set('comment_default_order_story', COMMENT_ORDER_OLDEST_FIRST);
+    variable_set('comment_preview_story', COMMENT_PREVIEW_OPTIONAL);
+  }
+
+  /**
+   * Test some behaviors.
+   */
+  function testCommentPermalink() {
+
+    // Create and login administrative user.
+    $admin_user = $this->drupalCreateUser(array('administer permissions', 'administer nodes', 'administer content types'));
+    $this->drupalLogin($admin_user);
+
+    // Create a node with comments allowed.
+    $this->node = $this->drupalCreateNode(array('type' => 'story', 'promote' => 1, 'comment' => 2));
+
+    // Get the page and post the comment.
+    $this->drupalGet('comment/reply/' . $this->node->nid);
+
+    for ($i = 1; $i <= 21; $i++) {
+       $comment = $this->postPermalinkComment($this->node, NULL, $this->randomName(), FALSE, TRUE);
+    }
+    // Confirm that comment 21 takes us to the second page.
+    $this->drupalGet('comment/21#comment-21');
+    $this->assertRaw('<a id="comment-21">', 'Found comment 21.');
+    $this->assertRaw('<li class="pager-current last">2</li>', 'Found comment 21 on the second page.');
+
+    // Confirm that comment 1 is on the first page.
+    $this->drupalGet('comment/1#comment-1');
+    $this->assertRaw('<a id="comment-1">', 'Found comment 1.');
+    $this->assertRaw('<li class="pager-current first">1</li>', 'Found comment 1 on the first page.');
+  }
+
+  /////////////////////////////////////\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+  ////////////////////////// COPIED FROM 7.X COMMENT.TEST \\\\\\\\\\\\\\\\\\\\\
+  //////////////////////////////and tweaked a little\\\\\\\\\\\\\\\\\\\\\\\\\\\
+  /////////////////////////////////////\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+  /**
+   * Post comment.
+   *
+   * @param object $node Node to post comment on.
+   * @param string $subject Comment subject.
+   * @param string $comment Comment body.
+   * @param boolean $preview Should preview be required.
+   * @param mixed $contact Set to NULL for no contact info, TRUE to ignore success checking, and array of values to set contact info.
+   */
+  function postPermalinkComment($node, $subject, $comment, $preview = TRUE, $contact = NULL) {
+    $edit = array();
+    if (!empty($subject)) {
+      $edit['subject'] = $subject;
+    }
+    $edit['comment'] = $comment;
+
+    if ($contact !== NULL && is_array($contact)) {
+      $edit += $contact;
+    }
+
+    if ($node !== NULL) {
+      $this->drupalGet('comment/reply/' . $node->nid);
+    }
+
+    if ($preview) {
+      $this->assertNoFieldByName('op', t('Save'), t('Save button not found.')); // Preview required so no save button should be found.
+      $this->drupalPost(NULL, $edit, t('Preview'));
+    }
+
+    $this->drupalPost(NULL, $edit, t('Save'));
+    $match = array();
+    // Get comment ID
+    preg_match('/#comment-([^"]+)/', $this->getURL(), $match);
+
+    // Get comment.
+    if ($contact !== TRUE) { // If true then attempting to find error message.
+      if ($subject) {
+        $this->assertText($subject, 'Comment subject posted.');
+      }
+      $this->assertText($comment, 'Comment body posted.');
+      $this->assertTrue((!empty($match) && !empty($match[1])), t('Comment id found.'));
+    }
+
+    if (isset($match[1])) {
+      return (object) array('id' => $match[1], 'subject' => $subject, 'comment' => $comment);
+    }
+  }
+
+}

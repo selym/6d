@@ -1,0 +1,42 @@
+<?php
+// $Id: permalink.install,v 1.3.2.2 2009/09/16 13:59:13 toddnienkerk Exp $
+
+/**
+ * @file
+ * Installs/uninstalls the permalink module.
+ */
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function permalink_uninstall() {
+  $vars = db_query("SELECT * FROM {variable} WHERE name LIKE 'permalink%'");
+  while ($var = db_fetch_object($vars)) {
+    variable_del($var->name);
+  }
+}
+
+/**
+ * Implementation of hook_update_N().
+ *
+ * @return array of status => meessage values.
+ */
+function permalink_update_6000() {
+  // Cycle through old var array
+  // Change to the new method of storing vars
+  $permalink_types = variable_get('permalink_types', FALSE);
+  if ($permalink_types !== FALSE) {
+    foreach ($permalink_types as $permalink_type) {
+      if ($permalink_type) {
+        variable_set('permalink_display_node_'. $permalink_type, TRUE);
+        variable_set('permalink_display_node_copybox_'. $permalink_type, TRUE);
+      }
+    }
+  }
+
+  // Delete old var array
+  variable_del('permalink_types');
+
+  // Must return an array
+  return array();
+}
